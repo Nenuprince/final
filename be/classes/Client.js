@@ -44,18 +44,19 @@ class Client {
       })
      }
 
-     addProducer(kind,newProducer){
+     // In Client.js
+     addProducer(kind, newProducer) {
+      // Store the full producer object, not just the ID
       this.producer[kind] = newProducer
-      // if audio , then add that to the active client 
-      if(kind === "audio"){
-         console.log("from the client js")
-         // console.log(newProducer)
-         this.room.activeSpeakerObserver.addProducer({
-            producerId:newProducer ,
-
-         })
+      
+      // if audio, then add that to the active client
+      if (kind === "audio") {
+        console.log("from the client js")
+        this.room.activeSpeakerObserver.addProducer({
+          producerId: newProducer.id, // Use the ID property
+        });
       }
-     }
+    }
 }
 
 module.exports = Client

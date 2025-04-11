@@ -29,7 +29,8 @@ export const joinRoom = (socket, roomID, username, localVideo, remoteVideoRefs) 
     if (!resp.newRoom) {
       // Not a new room, so start consuming from existing participants
       console.log("Joining existing room with participants");
-      await RequestTransportToConsumer(resp, socket, device);
+      // Pass the remoteRefs to the consumer function
+      await RequestTransportToConsumer(resp, socket, device, remoteRefs);
     } else {
       console.log("Created new room");
     }
@@ -74,9 +75,33 @@ export const joinRoom = (socket, roomID, username, localVideo, remoteVideoRefs) 
     audioProducer = producers.audioProducer;
     console.log("Producers created:", { videoProducer, audioProducer });
     
+    // Set up listener for dominant speaker changes
+    socketRef.on('dominant-speaker-changed', (data) => {
+      console.log("Dominant speaker changed:", data);
+      updateDominantSpeaker(data, remoteRefs);
+    });
+    
     resolve();
   } catch (err) {
     console.error("Error setting up producer:", err);
     reject(err);
   }
 }));
+
+// Helper function to update dominant speaker video
+function updateDominantSpeaker(data, remoteRefs) {
+  // Find video element with the matching producer ID
+  const username = data.username;
+  const elements = document.querySelectorAll('video[data-username]');
+  
+  for (const el of elements) {
+    if (el.getAttribute('data-username') === username && el.srcObject) {
+      // Found the dominant speaker's video element
+      if (remoteRefs.dominant.current) {
+        remoteRefs.dominant.current.srcObject = el.srcObject;
+        remoteRefs.dominant.current.play().catch(err => console.error('Error playing dominant video:', err));
+      }
+      break;
+    }
+  }
+}

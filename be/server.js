@@ -164,21 +164,20 @@ io.on('connect', (socket) => {
         }
     });
 
-
     socket.on('startProducing', async ({ kind, rtpParameters }, ack) => {
         try {
-            const newProducer = await client.upstreamTransport.produce({ kind, rtpParameters })
-            // add producer to this client object
-            console.log('from the server js : newProducer')
-            console.log(newProducer.id)
-            client.addProducer(kind, newProducer.id)
-            ack(newProducer.id)
-
+          const newProducer = await client.upstreamTransport.produce({ kind, rtpParameters });
+          console.log('from the server js : newProducer');
+          console.log(newProducer.id);
+          
+          // Add the full producer object to the client
+          client.addProducer(kind, newProducer);
+          ack(newProducer.id);
         } catch (err) {
-            console.log(err)
+          console.log(err);
+          ack({ error: err.message });
         }
-    })
-
+      });
     //consume
 
     socket.on('consume', async ({ rtpCapabilities, producerAudioId, producerVideoId, transportId }, ack) => {
