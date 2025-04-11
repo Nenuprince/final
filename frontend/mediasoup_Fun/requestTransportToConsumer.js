@@ -121,9 +121,13 @@ const RequestTransportToConsumer = (consumeData, socket, device) => {
  };
  
  // Helper function to update video elements
- function updateVideoElement(consumerInfo, index) {
-   // Get the remote video element by index (0-4)
-   const videoEl = document.getElementById(`remote${index}`) || document.getElementById('remote');
+ // Updated updateVideoElement function for RequestTransportToConsumer.js
+function updateVideoElement(consumerInfo, index) {
+   // Create the remote video element IDs based on index
+   const videoElementId = index === 0 ? 'remote' : `remote${index}`;
+   
+   // Get the video element - try both React ref approach and direct DOM approach
+   let videoEl = document.getElementById(videoElementId);
    
    if (videoEl && consumerInfo.video) {
      // Create a MediaStream with the consumer's track
@@ -147,7 +151,7 @@ const RequestTransportToConsumer = (consumeData, socket, device) => {
        dominantVideo.srcObject = stream;
        dominantVideo.play().catch(err => console.error('Error playing dominant video:', err));
      }
-   }
+   }   
  }
  
  export default RequestTransportToConsumer;
