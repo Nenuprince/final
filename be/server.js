@@ -124,21 +124,35 @@ io.on('connect' ,(socket)=>{
         ack(ClientTransportParams)
     })
 
-    socket.on('connect-transport' , async({dtlsParameters,type},ack)=>{
-        console.log({dtlsParameters})
-         if(type === 'producer'){
+    socket.on('connect-transport', async({dtlsParameters, type, audioPid}, ack) => {
+        console.log({dtlsParameters});
+        if(type === 'producer'){
             try{
-              const connect =   await client.upstreamTransport.connect({dtlsParameters})
-                console.log(connect)
-                ack('success')
+                await client.upstreamTransport.connect({dtlsParameters});
+                ack('success');
             }catch(err){
-                console.log(err)
+                console.log(err);
+                ack('error');
             }
-         }
-         if(type === ' consume r'){
-
-         }
-    })
+        }
+        if(type === 'consumer'){
+            try {
+                // Find the correct transport from the array
+                const targetTransport = client.downstreamTransport.find(t => 
+                    t.associatedAudioPid === audioPid);
+                
+                if (targetTransport) {
+                    await targetTransport.transport.connect({dtlsParameters});
+                    ack('success');
+                } else {
+                    ack('error');
+                }
+            } catch(err) {
+                console.log(err);
+                ack('error');
+            }
+        }
+    });
 
 
     socket.on('startProducing' , async({kind, rtpParameters}, ack)=>{
@@ -154,6 +168,116 @@ io.on('connect' ,(socket)=>{
             console.log(err)
         }
     })
+
+    //consume
+
+    socket.on('consume', async({rtpCapabilities, producerAudioId, producerVideoId, transportId}, ack) => {
+        try {
+            // Check if the device can consume the producer
+            if (!client.room.router.canConsume({
+                producerId: producerAudioId,
+                rtpCapabilities
+            })) {
+                return ack({success: false, error: 'Cannot consume audio'});
+            }
+            
+            // Find the correct transport for this producer
+            const targetTransport = client.downstreamTransport.find(t => 
+                t.associatedAudioPid === producerAudioId);
+            
+            if (!targetTransport) {
+                return ack({success: false, error: 'Transport not found'});
+            }
+            
+            // Create audio consumer
+            const audioConsumer = await targetTransport.transport.consume({
+                producerId: producerAudioId,
+                rtpCapabilities,
+                paused: true,
+            });
+            
+            // Create video consumer if available
+            let videoConsumer = null;
+            if (producerVideoId && client.room.router.canConsume({
+                producerId: producerVideoId,
+                rtpCapabilities
+            })) {
+                videoConsumer = await targetTransport.transport.consume({
+                    producerId: producerVideoId,
+                    rtpCapabilities,
+                    paused: true,
+                });
+            }
+            
+            // Store consumers in client object
+            client.consumer.push({
+                audioConsumer: audioConsumer.id,
+                videoConsumer: videoConsumer ? videoConsumer.id : null,
+                producerAudioId,
+                producerVideoId
+            });
+            
+            // Return consumer parameters to client
+            ack({
+                success: true,
+                audioParams: {
+                    id: audioConsumer.id,
+                    producerId: audioConsumer.producerId,
+                    kind: audioConsumer.kind,
+                    rtpParameters: audioConsumer.rtpParameters,
+                },
+                videoParams: videoConsumer ? {
+                    id: videoConsumer.id,
+                    producerId: videoConsumer.producerId,
+                    kind: videoConsumer.kind,
+                    rtpParameters: videoConsumer.rtpParameters,
+                } : null
+            });
+            
+        } catch (err) {
+            console.log(err);
+            ack({success: false, error: err.message});
+        }
+    });
+ 
+
+    //consume - resume.
+
+    socket.on('consumer-resume', async ({ consumerId }, ack) => {
+        try {
+            // Find the consumer in the client's consumers array
+            for (const consumers of client.consumer) {
+                if (consumers.audioConsumer === consumerId) {
+                    // Find the transport that has this consumer
+                    const transport = client.downstreamTransport.find(t => 
+                        t.associatedAudioPid === consumers.producerAudioId);
+                        
+                    if (transport) {
+                        await transport.transport.consumers.find(c => c.id === consumerId).resume();
+                        ack('success');
+                        return;
+                    }
+                }
+                
+                if (consumers.videoConsumer === consumerId) {
+                    // Find the transport that has this consumer
+                    const transport = client.downstreamTransport.find(t => 
+                        t.associatedVideoPid === consumers.producerVideoId);
+                        
+                    if (transport) {
+                        await transport.transport.consumers.find(c => c.id === consumerId).resume();
+                        ack('success');
+                        return;
+                    }
+                }
+            }
+            
+            ack('error');
+        } catch (err) {
+            console.log(err);
+            ack('error');
+        }
+    });
     
 })
 
