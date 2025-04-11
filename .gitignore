@@ -1,0 +1,54 @@
+# Node modules
+node_modules/
+**/node_modules/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# dotenv environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build output
+dist/
+build/
+client/build/
+server/build/
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Test coverage
+coverage/
+
+# Optional: Ignore MongoDB data dumps
+dump/
+
+# Optional: PM2 logs
+pids
+*.pid
+*.seed
+
+# Mac System Files
+._*
+
+# Optional: Optional Yarn integrity file
+.yarn-integrity
+
+# Optional: Next.js or similar cache
+.next/
+out/
